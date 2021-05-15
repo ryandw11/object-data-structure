@@ -2,6 +2,7 @@ use crate::internal::ODSInternal;
 use crate::tags::general::{Tag, ITag};
 use std::path::PathBuf;
 use crate::internal::file::ODSFile;
+use std::fmt::Debug;
 
 pub struct ObjectDataStruct<T: ODSInternal> {
     internal: T
@@ -14,14 +15,16 @@ impl ObjectDataStruct<ODSFile> {
         })
     }
 
-    pub fn get<T: 'static + ITag>(&mut self, key: String) -> Option<&T> {
+    pub fn get<T: 'static + ITag + Debug>(&mut self, key: String) -> Option<T> {
         let tag = self.internal.get(key);
         if tag.is_none() {
             return Option::None;
         }
         let new_tag = tag.unwrap();
+        println!("{:?}", new_tag.as_any().is::<T>());
         // Issue here: I have no clue how to fix this.
-        let output : &T = new_tag.as_any().downcast_ref::<T>().unwrap();
-        Some(output)
+        // let output = new_tag.as_any().downcast::<T>().unwrap();
+        // Some(*output)
+        Option::None
     }
 }

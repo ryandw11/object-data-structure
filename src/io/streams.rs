@@ -5,6 +5,7 @@ use std::io::{Read, Cursor, Seek, SeekFrom};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian, LittleEndian};
 use std::fs;
 
+#[derive(Clone, Debug)]
 pub struct ReadStream {
     buffer: Cursor<Vec<u8>>,
     size: usize

@@ -1,13 +1,14 @@
 use crate::io::streams::ReadStream;
 use crate::tags::general::{Tag, StringTag, ITag};
 
+#[derive(Debug)]
 pub struct TagBuilder {
     data_type: i32,
     data_size: i32,
     starting_index: i64,
     name: String,
     name_size: i32,
-    value_bytes: Option<&'static ReadStream>,
+    value_bytes: Option<ReadStream>,
     value_length: i32
 }
 
@@ -64,12 +65,12 @@ impl TagBuilder {
         self.name_size
     }
 
-    pub fn set_value_bytes(&mut self, read_stream: &'static ReadStream) {
-        self.value_bytes = Some(read_stream);
+    pub fn set_value_bytes(&mut self, read_stream: ReadStream) {
+        self.value_bytes = Some(read_stream.clone());
     }
 
-    pub fn get_value_bytes(&mut self) -> Option<&ReadStream> {
-        self.value_bytes
+    pub fn get_value_bytes(mut self) -> Option<ReadStream> {
+        self.value_bytes.clone()
     }
 
     pub fn set_value_length(&mut self, length: i32) {
@@ -80,10 +81,11 @@ impl TagBuilder {
         self.value_length
     }
 
-    pub fn process(&mut self) -> Option<Box<dyn ITag>> {
+    pub fn process(&mut self) -> Option<Box<dyn ITag + 'static>> {
+        println!("{:?}", self);
         let name = self.name.to_string();
         match self.get_data_type() {
-            1 => Some(Box::new(StringTag::new(name, String::new()).create_from_data(self.value_bytes.unwrap(), self.value_length))),
+            1 => Some(Box::new(StringTag::new(name, String::new()).create_from_data(self.value_bytes.clone().unwrap(), self.value_length))),
             // TODO:: Custom Tags
             _ => Option::None
         }

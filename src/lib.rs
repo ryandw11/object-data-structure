@@ -53,8 +53,8 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let tag = TagIMPL::new();
-        print_data(tag);
+        // let tag = TagIMPL::new();
+        // print_data(tag);
 
 
         // let tag = StringTag::new("Test".to_string(), "Test String from Rust".to_string());
@@ -62,9 +62,9 @@ mod tests {
         // tag.write_data(&mut stream);
         // stream.export_to_file(PathBuf::from("./test.ods"));
 
-        // let mut ods = ObjectDataStruct::new_file(PathBuf::from("./test.ods"));
-        // let data = ods.get::<StringTag>("Test".to_string());
-        // println!("{:?}", data);
+        let mut ods = ObjectDataStruct::new_file(PathBuf::from("./test.ods"));
+        let data = ods.get::<StringTag>("Test".to_string());
+        println!("{:?}", data);
 
     }
 }

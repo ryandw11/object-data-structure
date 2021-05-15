@@ -1,14 +1,15 @@
 use crate::io::streams::{ReadStream, WriteStream};
 use std::any::Any;
+use std::fmt::Debug;
 
-pub trait ITag {
+pub trait ITag: Debug {
     fn get_name(&self) -> &String;
     fn set_name(&mut self, name: String);
     fn write_data(self, write_stream: &mut WriteStream);
-    fn create_from_data(&self, read_stream: &ReadStream, size: i32) -> Self where Self: Sized;
+    fn create_from_data(self, read_stream: ReadStream, size: i32) -> Self where Self: Sized;
     fn get_id(&self) -> u8;
 
-    fn as_any(&self) -> &dyn Any;
+    fn as_any(self: Box<Self>) -> Box<dyn Any + 'static>;
 }
 
 pub trait Tag<T> : ITag{
@@ -60,15 +61,18 @@ impl ITag for StringTag {
         write_stream.write_vec(temp_stream.bytes());
     }
 
-    fn create_from_data(&self, read_stream: &ReadStream, size: i32) -> Self {
-        unimplemented!()
+    fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> Self {
+        let string = read_stream.read_string(size as u64);
+        self.value = string;
+
+        self
     }
 
     fn get_id(&self) -> u8 {
         1
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn as_any(self: Box<Self>) -> Box<dyn Any + 'static> {
+        Box::new(self)
     }
 }

@@ -9,13 +9,13 @@ pub struct ODSFile {
 }
 
 impl ODSInternal for ODSFile {
-    fn get(&mut self, key: String) -> Option<Box<dyn ITag>> {
+    fn get(&mut self, key: String) -> Option<Box<dyn ITag + 'static>> {
         if !self.file.exists() {
             return Option::None;
         }
         let mut read_stream = ReadStream::new(&self.file);
 
-        get_sub_object_data(&mut read_stream, key)
+        get_sub_object_data(read_stream, key)
     }
 }
 
