@@ -1,0 +1,9 @@
+[package]
+name = "object-data-structure"
+version = "0.1.0"
+authors = ["Ryandw11 <6239385+ryandw11@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
