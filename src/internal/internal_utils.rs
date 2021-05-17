@@ -3,7 +3,7 @@ use crate::tags::general::{Tag, ITag, StringTag};
 use crate::internal::tag_builder::TagBuilder;
 use std::any::Any;
 
-pub fn get_sub_object_data(mut read_stream: ReadStream, key: String) -> Option<Box<dyn ITag + 'static>> {
+pub fn get_sub_object_data<T: 'static>(mut read_stream: ReadStream, key: String) -> Option<Tag<T>> {
     let name_list : Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();
     let other_key = get_key(key.as_str().split('.').collect());
@@ -39,11 +39,8 @@ pub fn get_sub_object_data(mut read_stream: ReadStream, key: String) -> Option<B
             // TODO Validate not compressed
             return get_sub_object_data(current_builder.get_value_bytes().unwrap(), other_key.unwrap());
         }
-        let pep = current_builder.process();
-        println!("Test: {:?}", (pep.unwrap().as_any()).is::<StringTag>());
-        // TODO FIX
-        // return pep;
-        return Option::None;
+
+        return current_builder.process::<T>();
     }
 
     Option::None

@@ -1,5 +1,6 @@
 use crate::io::streams::ReadStream;
-use crate::tags::general::{Tag, StringTag, ITag};
+use crate::tags::general::{Tag, StringTag, ITag, Taggable};
+use std::any::{Any, TypeId};
 
 #[derive(Debug)]
 pub struct TagBuilder {
@@ -81,13 +82,17 @@ impl TagBuilder {
         self.value_length
     }
 
-    pub fn process(&mut self) -> Option<Box<dyn ITag + 'static>> {
-        println!("{:?}", self);
+    pub fn process<T: /*Taggable<T> +*/ 'static>(&mut self) -> Option<Tag<T>> {
+        println!("{:?}", TypeId::of::<Tag<T>>());
+        println!("{:?}", TypeId::of::<StringTag>());
         let name = self.name.to_string();
+        // type TagData = Tag<T>;
+        // TagData::new(name, T::get_default());
         match self.get_data_type() {
-            1 => Some(Box::new(StringTag::new(name, String::new()).create_from_data(self.value_bytes.clone().unwrap(), self.value_length))),
+            1 => Some(StringTag::new(name, String::new()).create_from_data(self.value_bytes.clone().unwrap(), self.value_length)),
             // TODO:: Custom Tags
             _ => Option::None
         }
+        // Option::None
     }
 }

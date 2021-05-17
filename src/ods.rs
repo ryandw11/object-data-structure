@@ -15,16 +15,12 @@ impl ObjectDataStruct<ODSFile> {
         })
     }
 
-    pub fn get<T: 'static + ITag + Debug>(&mut self, key: String) -> Option<T> {
-        let tag = self.internal.get(key);
+    pub fn get<T: 'static>(&mut self, key: String) -> Option<Tag<T>> {
+        let tag = self.internal.get::<T>(key);
         if tag.is_none() {
             return Option::None;
         }
-        let new_tag = tag.unwrap();
-        println!("{:?}", new_tag.as_any().is::<T>());
-        // Issue here: I have no clue how to fix this.
-        // let output = new_tag.as_any().downcast::<T>().unwrap();
-        // Some(*output)
-        Option::None
+
+        tag
     }
 }
