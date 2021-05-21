@@ -5,6 +5,7 @@ use std::io::{Read, Cursor, Seek, SeekFrom};
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian, LittleEndian};
 use std::fs;
 
+#[derive(Clone, Debug)]
 pub struct ReadStream {
     buffer: Cursor<Vec<u8>>,
     size: usize
@@ -58,6 +59,10 @@ impl ReadStream {
 
     pub fn skip(&mut self, skip_amount: u64){
         self.buffer.set_position(self.buffer.position() + skip_amount);
+    }
+
+    pub fn size(&mut self) -> usize {
+        self.size
     }
 
     pub fn position(&mut self) -> u64 {
