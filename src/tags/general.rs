@@ -1,5 +1,5 @@
 use crate::io::streams::{ReadStream, WriteStream};
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::fmt::Debug;
 use crate::internal::tag_builder::TagBuilder;
 use std::ops::Deref;
@@ -10,6 +10,7 @@ pub type AnyTag = Tag<Box<dyn Any>>;
 pub trait Taggable<T> {
     fn as_tag(&self, name: String) -> Tag<T>;
     fn process(tag_builder: TagBuilder) -> Option<Tag<T>>;
+    fn write_data(tag: Tag<T>, write_stream: &mut WriteStream);
 }
 
 impl Taggable<String> for String {
@@ -24,6 +25,17 @@ impl Taggable<String> for String {
         }
         Option::None
     }
+
+    fn write_data(tag: Tag<String>, write_stream: &mut WriteStream) {
+        write_stream.write(tag.get_id());
+        let mut temp_stream = WriteStream::new();
+        temp_stream.write_i16(tag.name.len() as i16);
+        temp_stream.write_string(tag.name);
+        temp_stream.write_string(tag.value);
+
+        write_stream.write_i32(temp_stream.size() as i32);
+        write_stream.write_vec(temp_stream.bytes());
+    }
 }
 
 impl Taggable<Box<dyn Any>> for Box<dyn Any> {
@@ -36,6 +48,10 @@ impl Taggable<Box<dyn Any>> for Box<dyn Any> {
             return Some(AnyTag::from_tag::<String>(String::process(tag_builder.clone()).unwrap()));
         }
         Option::None
+    }
+
+    fn write_data(tag: Tag<Box<dyn Any>>, write_stream: &mut WriteStream) {
+        panic!("Cannot write the data of an AnyTag. Convert it to a normal tag first.");
     }
 }
 
@@ -78,17 +94,6 @@ impl Tag<String> {
     //     }
     // }
 
-    pub fn write_data(self, write_stream: &mut WriteStream) {
-        write_stream.write(self.get_id());
-        let mut temp_stream = WriteStream::new();
-        temp_stream.write_i16(self.name.len() as i16);
-        temp_stream.write_string(self.name);
-        temp_stream.write_string(self.value);
-
-        write_stream.write_i32(temp_stream.size() as i32);
-        write_stream.write_vec(temp_stream.bytes());
-    }
-
     pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> StringTag {
         let string = read_stream.read_string(size as u64);
         self.value = string;
@@ -98,10 +103,6 @@ impl Tag<String> {
 
     pub fn get_id(&self) -> u8 {
         1
-    }
-
-    pub fn as_any(self: &'static Self) -> Box<dyn Any + '_> {
-        Box::new(self)
     }
 }
 
@@ -117,12 +118,11 @@ impl Tag<Box<dyn Any>> {
     pub fn from_tag<T: 'static + Taggable<T>>(tag: Tag<T>) -> AnyTag {
         Self {
             name: tag.name,
-            value: Box::new(tag.value),
+            value: Box::new(tag.value)
         }
     }
 
     pub fn downcast_any_tag<T: 'static + Clone + Taggable<T>>(&self) -> Tag<T> {
-        let data = self.value.downcast_ref::<T>();
         Tag::<T>::new(self.name.clone(), (*self.value.downcast_ref::<T>().unwrap()).clone())
     }
 

@@ -22,4 +22,24 @@ impl ObjectDataStructure<ODSFile> {
     pub fn get_all(&mut self) -> Option<Vec<AnyTag>> {
         self.internal.get_all()
     }
+
+    pub fn save(&mut self, tags: Vec<AnyTag>) {
+        unimplemented!("This method is not implemented at this time.");
+    }
+
+    pub fn append<T: Taggable<T>>(&mut self, tag: Tag<T>) {
+        self.internal.append(tag);
+    }
+
+    pub fn append_all(&mut self, tags: Vec<AnyTag>){
+        unimplemented!("This method is not implemented at this time.");
+    }
+
+    pub fn find(&mut self, key: String) -> bool {
+        self.internal.find(key)
+    }
+
+    pub fn delete(&mut self, key: String) {
+        self.internal.delete(key);
+    }
 }

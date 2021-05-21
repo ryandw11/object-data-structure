@@ -55,8 +55,8 @@ impl TagBuilder {
         self.name = name;
     }
 
-    pub fn get_name(self) -> String {
-        self.name
+    pub fn get_name(&self) -> String {
+        self.name.clone()
     }
 
     pub fn set_name_size(&mut self, size: i32) {

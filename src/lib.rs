@@ -4,6 +4,7 @@
 pub mod io;
 pub mod tags;
 pub mod ods;
+pub mod util;
 pub mod internal;
 
 extern crate byteorder;
@@ -70,5 +71,11 @@ mod tests {
         let tags = ods.get_all().unwrap();
         println!("{}", tags[0].downcast_any_tag::<String>().get_value());
 
+        let example_tag = StringTag::new("Test_Tag".to_string(), "My Example value!".to_string());
+        ods.append(example_tag);
+
+        println!("{}", ods.find("Test_Tag".to_string()));
+
+        // ods.delete("Test_Tag".to_string());
     }
 }

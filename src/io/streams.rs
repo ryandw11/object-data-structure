@@ -72,6 +72,18 @@ impl ReadStream {
     pub fn can_read_more(&mut self) -> bool {
         self.buffer.position() < self.size as u64
     }
+
+    pub fn bytes(&mut self) -> Vec<u8> {
+        let pos = self.position();
+        // Go to front
+        self.buffer.set_position(0);
+        let mut end_vec : Vec<u8> = Vec::new();
+        // Read entire buffer.
+        self.buffer.read_to_end(&mut end_vec);
+        // Go back to the previous position
+        self.buffer.set_position(pos);
+        end_vec
+    }
 }
 
 pub struct WriteStream {
@@ -82,6 +94,15 @@ impl WriteStream {
     pub fn new() -> WriteStream {
         let buffer : Vec<u8> = Vec::new();
         let cursor = Cursor::new(buffer);
+        WriteStream{
+            buffer: cursor
+        }
+    }
+
+    pub fn new_with_data(data: Vec<u8>) -> WriteStream {
+        let len = data.len();
+        let mut cursor = Cursor::new(data);
+        cursor.set_position(len as u64);
         WriteStream{
             buffer: cursor
         }
@@ -145,6 +166,7 @@ impl WriteStream {
     }
 
     pub fn export_to_file(&mut self, file: PathBuf) {
-        fs::write("test.ods", self.bytes());
+        // TODO Add error handling.
+        println!("Is Error On Write: (TODO FIX) {}", fs::write(file, self.bytes()).is_err())
     }
 }
