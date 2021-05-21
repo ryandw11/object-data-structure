@@ -4,13 +4,13 @@ use std::path::PathBuf;
 use crate::internal::file::ODSFile;
 use std::fmt::Debug;
 
-pub struct ObjectDataStruct<T: ODSInternal> {
+pub struct ObjectDataStructure<T: ODSInternal> {
     internal: T
 }
 
-impl ObjectDataStruct<ODSFile> {
-    pub fn new_file(file: PathBuf) -> Box<ObjectDataStruct<ODSFile>> {
-        Box::new(ObjectDataStruct {
+impl ObjectDataStructure<ODSFile> {
+    pub fn new_file(file: PathBuf) -> Box<ObjectDataStructure<ODSFile>> {
+        Box::new(ObjectDataStructure {
             internal: ODSFile::new(file)
         })
     }

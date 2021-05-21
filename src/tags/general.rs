@@ -122,7 +122,8 @@ impl Tag<Box<dyn Any>> {
     }
 
     pub fn downcast_any_tag<T: 'static + Clone + Taggable<T>>(&self) -> Tag<T> {
-        Tag::<T>::new(self.name.clone(), (self.value.downcast::<T>().unwrap().deref()).clone())
+        let data = self.value.downcast_ref::<T>();
+        Tag::<T>::new(self.name.clone(), (*self.value.downcast_ref::<T>().unwrap()).clone())
     }
 
     pub fn get_id(&self) -> u8 {
