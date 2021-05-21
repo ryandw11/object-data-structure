@@ -1,5 +1,5 @@
 use crate::internal::ODSInternal;
-use crate::tags::general::{Tag, ITag};
+use crate::tags::general::{Tag, Taggable, AnyTag};
 use std::path::PathBuf;
 use crate::internal::file::ODSFile;
 use std::fmt::Debug;
@@ -15,12 +15,11 @@ impl ObjectDataStruct<ODSFile> {
         })
     }
 
-    pub fn get<T: 'static>(&mut self, key: String) -> Option<Tag<T>> {
-        let tag = self.internal.get::<T>(key);
-        if tag.is_none() {
-            return Option::None;
-        }
+    pub fn get<T: Taggable<T>>(&mut self, key: String) -> Option<Tag<T>> {
+        self.internal.get::<T>(key)
+    }
 
-        tag
+    pub fn get_all(&mut self) -> Option<Vec<AnyTag>> {
+        self.internal.get_all()
     }
 }

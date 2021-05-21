@@ -1,9 +1,9 @@
 use crate::io::streams::ReadStream;
-use crate::tags::general::{Tag, ITag, StringTag};
-use crate::internal::tag_builder::TagBuilder;
+use crate::tags::general::{Tag, StringTag, Taggable, AnyTag};
+use crate::internal::tag_builder::{TagBuilder};
 use std::any::Any;
 
-pub fn get_sub_object_data<T: 'static>(mut read_stream: ReadStream, key: String) -> Option<Tag<T>> {
+pub fn get_sub_object_data<T: Taggable<T>>(mut read_stream: ReadStream, key: String) -> Option<Tag<T>> {
     let name_list : Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();
     let other_key = get_key(key.as_str().split('.').collect());
@@ -57,4 +57,32 @@ fn get_key(s: Vec<&str>) -> Option<String> {
     }
 
     Some(list.join("."))
+}
+
+pub fn get_list_data(mut read_stream: ReadStream, limit: i32) -> Vec<AnyTag> {
+    let mut output: Vec<AnyTag> = Vec::new();
+
+
+    let initial_pos: i32 = read_stream.position() as i32;
+
+
+
+    while (read_stream.position() as i32) < initial_pos + limit {
+        println!("Limit: {} + Pos {}", initial_pos + limit, read_stream.position());
+        let mut current_builder = TagBuilder::new();
+        current_builder.set_data_type(read_stream.read() as i32);
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+        println!("Position: {}, Size: {}", read_stream.position(), current_builder.get_name_size());
+        let tag_name = read_stream.read_string(current_builder.get_name_size() as u64);
+        current_builder.set_name(tag_name);
+        current_builder.set_value_length(((current_builder.starting_index as i32) - (read_stream.position() as i32)) + current_builder.data_size);
+        current_builder.set_value_bytes(read_stream.clone());
+
+        read_stream.skip(current_builder.data_size as u64);
+        output.push(current_builder.process::<Box<dyn Any>>().unwrap());
+    }
+
+    output
 }

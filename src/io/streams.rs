@@ -61,6 +61,10 @@ impl ReadStream {
         self.buffer.set_position(self.buffer.position() + skip_amount);
     }
 
+    pub fn size(&mut self) -> usize {
+        self.size
+    }
+
     pub fn position(&mut self) -> u64 {
         self.buffer.position()
     }

@@ -10,7 +10,7 @@ extern crate byteorder;
 
 #[cfg(test)]
 mod tests {
-    use crate::tags::general::{StringTag, Tag, ITag};
+    use crate::tags::general::{StringTag, Tag};
     use crate::io::streams::WriteStream;
     use std::fs;
     use std::path::PathBuf;
@@ -65,7 +65,10 @@ mod tests {
         let mut ods = ObjectDataStruct::new_file(PathBuf::from("./test.ods"));
         let data = ods.get::<String>("Test".to_string());
 
-        println!("{:?}", data);
+        println!("Value From Test Tag: {}", data.unwrap().get_value());
+
+        let tags = ods.get_all().unwrap();
+        println!("{:?}", tags[0].downcast_any_tag::<String>());
 
     }
 }
