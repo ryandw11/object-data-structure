@@ -39,7 +39,15 @@ impl ObjectDataStructure<ODSFile> {
         self.internal.find(key)
     }
 
-    pub fn delete(&mut self, key: String) {
-        self.internal.delete(key);
+    pub fn delete(&mut self, key: String) -> bool {
+        self.internal.delete(key)
+    }
+
+    pub fn replace_data<T: Taggable<T>>(&mut self, key: String, replacement: Tag<T>) -> bool {
+        self.internal.replace_data(key, replacement)
+    }
+
+    pub fn set<T: Taggable<T>>(&mut self, key: String, value: Option<Tag<T>>) {
+
     }
 }

@@ -147,6 +147,28 @@ pub fn delete_sub_object_data<'a>(data: &'a mut Vec<u8>, counter: &'a mut KeySco
     data
 }
 
+pub fn replace_sub_object_data<'a, 'b>(data: &'a mut Vec<u8>, counter: &'a mut KeyScout, data_to_replace: &'b Vec<u8>) -> &'a mut Vec<u8> {
+    let end_amount = counter.get_end().as_ref().unwrap().get_size() + 5;
+    counter.remove_amount(end_amount);
+    counter.add_amount(data_to_replace.len() as i32);
+
+    let mut end = counter.get_end().as_ref().unwrap();
+
+    // Remove the data
+    data.splice(((end.get_starting_index() - 1) as usize)..((end.get_starting_index() + 4 + end.get_size()) as usize), data_to_replace.iter().cloned());
+
+    for child in counter.get_children().iter() {
+        let index = child.get_starting_index() as usize;
+        let size : usize = child.get_size() as usize;
+        data[index] = (size >> 24) as u8;
+        data[index + 1] = (size >> 16) as u8;
+        data[index + 2] = (size >> 8) as u8;
+        data[index + 3] = (size) as u8;
+    }
+
+    data
+}
+
 pub fn scout_object_data<'a, 'b>(read_stream: &'a mut ReadStream, key: String, counter: &'b mut KeyScout) -> &'b mut KeyScout {
     let name_list: Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();

@@ -53,6 +53,18 @@ impl ReadStream {
         self.buffer.read_i64::<BigEndian>().unwrap()
     }
 
+    pub fn read_f32(&mut self) -> f32 {
+        self.buffer.read_f32::<BigEndian>().unwrap()
+    }
+
+    pub fn read_f64(&mut self) -> f64 {
+        self.buffer.read_f64::<BigEndian>().unwrap()
+    }
+
+    pub fn read_char(&mut self) -> char {
+        self.buffer.read_u8().unwrap() as char
+    }
+
     pub fn set_position(&mut self, position: u64){
         self.buffer.set_position(position);
     }
@@ -130,6 +142,18 @@ impl WriteStream {
         self.buffer.write_i64::<BigEndian>(long);
     }
 
+    pub fn write_f32(&mut self, float: f32){
+        self.buffer.write_f32::<BigEndian>(float);
+    }
+
+    pub fn write_f64(&mut self, double: f64){
+        self.buffer.write_f64::<BigEndian>(double);
+    }
+
+    pub fn write_char(&mut self, character: char) {
+        self.buffer.write_u8(character as u8);
+    }
+
     pub fn write_string(&mut self, string: String){
         let data = string.as_bytes();
         for byte in data.iter() {
@@ -165,8 +189,8 @@ impl WriteStream {
         output
     }
 
-    pub fn export_to_file(&mut self, file: PathBuf) {
+    pub fn export_to_file(&mut self, file: PathBuf) -> bool {
         // TODO Add error handling.
-        println!("Is Error On Write: (TODO FIX) {}", fs::write(file, self.bytes()).is_err())
+        fs::write(file, self.bytes()).is_ok()
     }
 }
