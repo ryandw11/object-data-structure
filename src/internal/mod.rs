@@ -11,4 +11,6 @@ pub trait ODSInternal {
     fn append<T: Taggable<T>>(&mut self, tag: Tag<T>);
     fn find(&mut self, key: String) -> bool;
     fn delete(&mut self, key: String) -> bool;
+    fn replace_data<T: Taggable<T>>(&mut self, key: String, replacement: Tag<T>) -> bool;
+    fn set<T: Taggable<T>>(&mut self, key: String, value: Option<Tag<T>>);
 }
