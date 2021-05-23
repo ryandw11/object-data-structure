@@ -2,9 +2,10 @@ use crate::io::streams::{ReadStream, WriteStream, Stream, IOWrite, StandardIO, I
 use std::any::Any;
 use std::fmt::Debug;
 use crate::internal::tag_builder::TagBuilder;
-use crate::internal::internal_utils::{get_list_data, get_sub_object_data, get_sub_object_by_index, get_data_type_by_index};
+use crate::internal::internal_utils::{get_list_data, get_sub_object_data, get_sub_object_by_index, get_data_type_by_index, scout_index_data, delete_sub_object_data, get_object_count, get_sub_object_type, scout_object_data, find_sub_object_data};
 use crate::util::write_any_tag;
 use std::marker::PhantomData;
+use crate::internal::keyscout::KeyScout;
 
 pub type StringTag = Tag<String>;
 pub type IntTag = Tag<i32>;
@@ -15,6 +16,7 @@ pub type LongTag = Tag<i64>;
 pub type CharTag = Tag<char>;
 pub type ByteTag = Tag<u8>;
 pub type VecTag = Tag<Container<VectorContainer>>;
+pub type ObjectTag = Tag<Container<ObjectContainer>>;
 pub type AnyTag = Tag<Box<dyn Any>>;
 
 /*
@@ -515,11 +517,31 @@ impl Tag<Container<VectorContainer>> {
         T::get_id() == id as u8
     }
 
-    // pub fn get<T: Taggable<T> + 'static>(&mut self, i: usize) -> &Tag<T> {
-    //     // let tag: AnyTag = self.value[i];
-    //
-    //     self.value[i].value.downcast_ref::<T>().unwrap()
-    // }
+    pub fn remove(&mut self, index: i32) {
+        self.value.data.set_position(0);
+        let mut key_scout = KeyScout::new();
+        scout_index_data(&mut self.value.data, index, &mut key_scout);
+
+        if key_scout.get_end().is_none() {
+            return;
+        }
+
+        let mut bytes = self.value.data.bytes();
+        delete_sub_object_data(&mut bytes, &mut key_scout);
+
+        self.value.data.clear();
+        self.value.data.write_vec(bytes);
+    }
+
+    pub fn remove_all(&mut self) {
+        self.value.data.clear();
+    }
+
+    pub fn len(&mut self) -> usize {
+        self.value.data.set_position(0);
+
+        get_object_count(self.value.clone().data)
+    }
 
     pub fn get_id(&self) -> u8 {
         9
@@ -554,6 +576,122 @@ impl Taggable<Container<VectorContainer>> for Container<VectorContainer> {
 
     fn get_id() -> u8 {
         9
+    }
+}
+
+/*
+    =============================
+             Object Tag
+    =============================
+ */
+#[derive(Clone, Debug)]
+pub struct ObjectContainer;
+
+impl Tag<Container<ObjectContainer>> {
+
+    pub fn from_vec(name: String, tags: Vec<AnyTag>) -> ObjectTag {
+        let mut write_stream = Stream::new_empty();
+        for tag in tags.iter() {
+            write_any_tag(tag, &mut write_stream);
+        }
+
+        let container : Container<ObjectContainer> = Container::new_with_data(write_stream.bytes());
+
+        ObjectTag {
+            name,
+            value: container,
+            id: 9
+        }
+    }
+
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> ObjectTag {
+        let mut vec = vec![0;size as usize];
+        read_stream.read_vec(&mut vec);
+        let data = Container::new_with_data(vec);
+
+        self.value = data;
+        self
+    }
+
+    pub fn get<T: Taggable<T>>(&mut self, key: String) -> Option<Tag<T>>{
+        self.value.data.set_position(0);
+        get_sub_object_data::<T>(self.value.clone().data, key)
+    }
+
+    pub fn add<T: Taggable<T>>(&mut self, mut tag: Tag<T>) {
+        self.value.data.goto_end();
+        T::write_data(tag, &mut self.value.data);
+    }
+
+    pub fn is_type<T: Taggable<T>>(&mut self, key: String) -> bool {
+        self.value.data.set_position(0);
+        let id = get_sub_object_type::<T>(self.value.clone().data, key);
+
+        T::get_id() == id as u8
+    }
+
+    pub fn has_tag(&mut self, key: String) -> bool {
+        find_sub_object_data(self.value.clone().data, key)
+    }
+
+    pub fn remove(&mut self, key: String) {
+        self.value.data.set_position(0);
+        let mut key_scout = KeyScout::new();
+        scout_object_data(&mut self.value.data, key, &mut key_scout);
+
+        if key_scout.get_end().is_none() {
+            return;
+        }
+
+        let mut bytes = self.value.data.bytes();
+        delete_sub_object_data(&mut bytes, &mut key_scout);
+
+        self.value.data.clear();
+        self.value.data.write_vec(bytes);
+    }
+
+    pub fn remove_all(&mut self) {
+        self.value.data.clear();
+    }
+
+    pub fn len(&mut self) -> usize {
+        self.value.data.set_position(0);
+
+        get_object_count(self.value.clone().data)
+    }
+
+    pub fn get_id(&self) -> u8 {
+        11
+    }
+}
+
+impl Taggable<Container<ObjectContainer>> for Container<ObjectContainer> {
+    fn as_tag(&self, name: String) -> ObjectTag {
+        panic!("Cannot create an Object Tag.");
+    }
+
+    fn process(tag_builder: TagBuilder) -> Option<ObjectTag> {
+        let name = tag_builder.name;
+        if tag_builder.data_type == 11 {
+            return Some(ObjectTag::new(name, Container::new()).create_from_data(tag_builder.value_bytes.clone().unwrap(), tag_builder.value_length));
+        }
+        Option::None
+    }
+
+    fn write_data(tag: Tag<Container<ObjectContainer>>, write_stream: &mut Stream) {
+        write_stream.write(tag.get_id());
+        let mut temp_stream = WriteStream::new();
+        temp_stream.write_i16(tag.name.len() as i16);
+        temp_stream.write_string(tag.name.clone());
+
+        temp_stream.write_vec(tag.get_value().clone().get_data().bytes());
+
+        write_stream.write_i32(temp_stream.size() as i32);
+        write_stream.write_vec(temp_stream.bytes());
+    }
+
+    fn get_id() -> u8 {
+        11
     }
 }
 
@@ -626,6 +764,10 @@ impl Taggable<Box<dyn Any>> for Box<dyn Any> {
         else if tag_builder.data_type == 9 {
             type T = Container<VectorContainer>;
             return Some(AnyTag::from_tag::<Container<VectorContainer>>(T::process(tag_builder.clone()).unwrap()));
+        }
+        else if tag_builder.data_type == 11 {
+            type T = Container<ObjectContainer>;
+            return Some(AnyTag::from_tag::<Container<ObjectContainer>>(T::process(tag_builder.clone()).unwrap()));
         }
         Option::None
     }

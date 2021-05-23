@@ -58,7 +58,7 @@ impl ODSInternal for ODSFile {
         if !self.file.exists() {
             return false;
         }
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
         let mut my_counter = KeyScout::new();
         scout_object_data(&mut read_stream, key, &mut my_counter);
 
@@ -78,7 +78,7 @@ impl ODSInternal for ODSFile {
         if !self.file.exists() {
             return false;
         }
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
         let mut my_counter = KeyScout::new();
         scout_object_data(&mut read_stream, key, &mut my_counter);
 
@@ -117,7 +117,7 @@ impl ODSInternal for ODSFile {
             self.append(value.unwrap());
             return;
         }
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
         let mut counter = KeyScout::new();
         scout_object_data(&mut read_stream, key, &mut counter);
 

@@ -1,9 +1,8 @@
-use crate::tags::general::{AnyTag, VecTag, Container, VectorContainer};
+use crate::tags::general::{AnyTag, VecTag, Container, VectorContainer, ObjectContainer};
 use crate::io::streams::{WriteStream, Stream};
 use crate::tags::general::Taggable;
 
 pub(crate) fn write_any_tag<'a>(tag: &'a AnyTag, write_stream: &'a mut Stream) {
-    println!("{:?}", tag);
     match tag.get_id() {
         1 => String::write_data(tag.downcast_any_tag::<String>(), write_stream),
         2 => i32::write_data(tag.downcast_any_tag::<i32>(), write_stream),
@@ -17,13 +16,23 @@ pub(crate) fn write_any_tag<'a>(tag: &'a AnyTag, write_stream: &'a mut Stream) {
             type T = Container<VectorContainer>;
             T::write_data(tag.downcast_any_tag::<Container<VectorContainer>>(), write_stream);
         },
+        11 => {
+            type T = Container<ObjectContainer>;
+            T::write_data(tag.downcast_any_tag::<Container<ObjectContainer>>(), write_stream);
+        },
         _ => {
             panic!("Unknown type!");
         }
     }
 }
 
-macro_rules! vec_tag {
+macro_rules! tag (
+    ($type:tt, $name:expr, $value:expr) => [
+        $type::new($name.to_string(), $value)
+    ]
+);
+
+macro_rules! anytag_vec {
     ($($x:expr),*) => {
         vec![$(as_any_tag![$x]),*]
     }

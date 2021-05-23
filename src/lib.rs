@@ -12,46 +12,13 @@ extern crate byteorder;
 
 #[cfg(test)]
 mod tests {
-    use crate::tags::general::{StringTag, DoubleTag, VecTag, AnyTag, Container, VectorContainer, FloatTag, ShortTag};
+    use crate::tags::general::{StringTag, DoubleTag, VecTag, AnyTag, Container, VectorContainer, FloatTag, ShortTag, ObjectTag};
     use crate::io::streams::WriteStream;
     use std::fs;
     use std::path::PathBuf;
     use crate::ods::ObjectDataStructure;
     use std::fmt::Debug;
-
-    pub trait ITestTag {
-        fn new() -> Self;
-    }
-
-    pub trait TestTag <T> : ITestTag {
-        fn my_test(self) -> T;
-    }
-
-    pub struct TagIMPL {
-        value: String,
-        name: String,
-    }
-
-    impl TestTag<String> for TagIMPL {
-        fn my_test(self) -> String {
-            "This is a test!".to_string()
-        }
-    }
-
-    impl ITestTag for TagIMPL {
-        fn new() -> Self {
-            TagIMPL {
-                value: "Test".to_string(),
-                name: "Test".to_string(),
-            }
-        }
-    }
-
-    pub fn print_data<T: TestTag<U>, U: Debug>(tag: T) {
-        println!("{:?}", tag.my_test());
-    }
-
-
+    use crate::tags::container_types::Object;
 
     #[test]
     fn it_works() {
@@ -76,7 +43,9 @@ mod tests {
         println!("Is Value: {:?}", test.get::<String>(1).unwrap().get_value());
 
 
-        println!("{:?}", test.is_type::<f64>(3));
+        println!("Is Double: {:?}", test.is_type::<f64>(3));
+
+        println!("Size: {}", test.len());
 
         // let mut example_tag = VecTag::from_vec("My_Double".to_string(), &mut vec_tag!(
         //     StringTag::new("My_Cool_Tag".to_string(), "My Next Value!".to_string()),
@@ -84,12 +53,23 @@ mod tests {
         //     StringTag::new("f".to_string(), " few fw efwe!".to_string()),
         //     DoubleTag::new("db".to_string(), 20.5436)
         // ));
+        // let mut object_tag = ObjectTag::from_vec("OOF".to_string(), vec_tag!(
+        //     StringTag::new("My_Cool_Tag".to_string(), "My Next Value!".to_string()),
+        //     StringTag::new("Name".to_string(), " greig erjiog eorjg oe!".to_string()),
+        //     StringTag::new("Fun".to_string(), " few fw efwe!".to_string()),
+        //     DoubleTag::new("db".to_string(), 20.5436)
+        // ));
         //
-        // example_tag.add(ShortTag::new("Test".to_string(), 20));
-        //
-        // ods.append(example_tag);
+        // ods.append(object_tag);
+
+        let mut obj = ods.get::<Object>("OOF".to_string()).unwrap();
+
+        println!("OBJ DATA: {}", obj.get::<String>("Fun".to_string()).unwrap().get_value());
+        println!("OBJ DATA DIRECT: {}", ods.get::<String>("OOF.Fun".to_string()).unwrap().get_value());
 
         println!("{}", ods.find("Test_Tag".to_string()));
+
+        ods.append(tag![StringTag, "BOB", "Test".to_string()]);
 
         // ods.delete("Test_Tag".to_string());
 

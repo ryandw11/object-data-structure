@@ -54,7 +54,6 @@ pub fn get_sub_object_data<T: Taggable<T>>(mut read_stream: Stream, key: String)
             // TODO Validate not compressed
             return get_sub_object_data(current_builder.get_value_bytes().unwrap(), other_key.unwrap());
         }
-
         return current_builder.process::<T>();
     }
 
@@ -125,6 +124,56 @@ pub fn get_data_type_by_index<T: Taggable<T>>(mut read_stream: Stream, index: i3
     }
 
     0
+}
+
+pub fn get_sub_object_type<T: Taggable<T>>(mut read_stream: Stream, key: String) -> i32 {
+    let name_list: Vec<&str> = key.as_str().split('.').collect();
+    let name = name_list[0].to_string();
+    let other_key = get_key(key.as_str().split('.').collect());
+
+    let mut current_builder = TagBuilder::new();
+    while read_stream.can_read_more() {
+        current_builder.set_data_type(read_stream.read() as i32);
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+
+        if current_builder.get_name_size() != name.len() as i32 {
+            read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+            current_builder = TagBuilder::new();
+            continue;
+        }
+
+        let tag_name = read_stream.read_string(current_builder.get_name_size() as u64);
+        current_builder.set_name(tag_name.clone());
+
+        if name != tag_name {
+            read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+            current_builder = TagBuilder::new();
+            continue;
+        }
+
+        return current_builder.get_data_type();
+    }
+
+    0
+}
+
+pub fn get_object_count(mut read_stream: Stream) -> usize {
+    let mut current_builder = TagBuilder::new();
+    let mut i: usize = 0;
+    while read_stream.can_read_more() {
+        i += 1;
+        current_builder.set_data_type(read_stream.read() as i32);
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+
+        read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+        current_builder = TagBuilder::new();
+    }
+
+    i
 }
 
 pub fn get_list_data(mut read_stream: Stream, limit: i32) -> Vec<AnyTag> {
@@ -235,7 +284,7 @@ pub fn replace_sub_object_data<'a, 'b>(data: &'a mut Vec<u8>, counter: &'a mut K
     data
 }
 
-pub fn scout_object_data<'a, 'b>(read_stream: &'a mut ReadStream, key: String, counter: &'b mut KeyScout) -> &'b mut KeyScout {
+pub fn scout_object_data<'a, 'b>(read_stream: &'a mut Stream, key: String, counter: &'b mut KeyScout) -> &'b mut KeyScout {
     let name_list: Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();
     let other_key = get_key(key.as_str().split('.').collect());
@@ -278,6 +327,45 @@ pub fn scout_object_data<'a, 'b>(read_stream: &'a mut ReadStream, key: String, c
             counter.add_child(child);
             return scout_object_data(read_stream, other_key.unwrap(), counter);
         }
+
+        child.set_name(current_builder.get_name());
+        child.set_size(current_builder.get_data_size());
+        counter.set_end(child);
+
+        return counter;
+    }
+
+    counter
+}
+
+pub fn scout_index_data<'a, 'b>(read_stream: &'a mut Stream, index: i32, counter: &'b mut KeyScout) -> &'b mut KeyScout {
+    let mut current_builder = TagBuilder::new();
+    let mut i = -1;
+    while read_stream.can_read_more() {
+        i += 1;
+
+        let mut child = KeyScoutChild::new();
+        current_builder.set_data_type(read_stream.read() as i32);
+
+        child.set_starting_index(read_stream.position() as i32);
+
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+
+        if i != index {
+            read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+            current_builder = TagBuilder::new();
+            continue;
+        }
+
+        let tag_name = read_stream.read_string(current_builder.get_name_size() as u64);
+        current_builder.set_name(tag_name.clone());
+
+        let starting_index = current_builder.get_starting_index();
+        let data_size = current_builder.get_data_size();
+
+        current_builder.set_value_length(((starting_index - read_stream.position() as i64) + data_size as i64) as i32);
 
         child.set_name(current_builder.get_name());
         child.set_size(current_builder.get_data_size());

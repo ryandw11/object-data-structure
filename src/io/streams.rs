@@ -112,6 +112,9 @@ pub trait IOWrite {
     /// Write a String to the Stream.
     fn write_string(&mut self, string: String);
 
+    /// Clear all data from the Stream.
+    fn clear(&mut self);
+
     /// Export all of the bytes to a file.
     /// **Note:** This will overwrite the existing data in that file.
     fn export_to_file(&mut self, file: PathBuf) -> bool;
@@ -264,6 +267,10 @@ impl IOWrite for Stream {
         for byte in data.iter() {
             self.buffer.write_u8(*byte);
         }
+    }
+
+    fn clear(&mut self) {
+        self.buffer = Cursor::new(Vec::new());
     }
 
     fn export_to_file(&mut self, file: PathBuf) -> bool {
@@ -486,6 +493,10 @@ impl IOWrite for WriteStream {
         for byte in data.iter() {
             self.buffer.write_u8(*byte);
         }
+    }
+
+    fn clear(&mut self) {
+        self.buffer = Cursor::new(Vec::new());
     }
 
     fn export_to_file(&mut self, file: PathBuf) -> bool {
