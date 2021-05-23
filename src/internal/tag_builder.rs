@@ -1,4 +1,4 @@
-use crate::io::streams::ReadStream;
+use crate::io::streams::{ReadStream, Stream};
 use crate::tags::general::{Tag, StringTag, Taggable};
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
@@ -10,7 +10,7 @@ pub struct TagBuilder {
     pub starting_index: i64,
     pub name: String,
     pub name_size: i32,
-    pub value_bytes: Option<ReadStream>,
+    pub value_bytes: Option<Stream>,
     pub value_length: i32
 }
 
@@ -67,11 +67,11 @@ impl TagBuilder {
         self.name_size
     }
 
-    pub fn set_value_bytes(&mut self, read_stream: ReadStream) {
+    pub fn set_value_bytes(&mut self, read_stream: Stream) {
         self.value_bytes = Some(read_stream.clone());
     }
 
-    pub fn get_value_bytes(mut self) -> Option<ReadStream> {
+    pub fn get_value_bytes(mut self) -> Option<Stream> {
         self.value_bytes.clone()
     }
 
@@ -82,24 +82,6 @@ impl TagBuilder {
     pub fn get_value_length(self) -> i32 {
         self.value_length
     }
-
-    // pub fn process<T: /*Taggable<T> +*/ 'static>(&mut self) -> Option<Tag<T>> {
-    //     println!("{:?}", TypeId::of::<Tag<T>>());
-    //     println!("{:?}", TypeId::of::<StringTag>());
-    //     let name = self.name.to_string();
-    //     // type TagData = Tag<T>;
-    //     // TagData::new(name, T::get_default());
-    //     match self.get_data_type() {
-    //         1 => Some(StringTag::new(name, String::new()).create_from_data(self.value_bytes.clone().unwrap(), self.value_length)),
-    //         // TODO:: Custom Tags
-    //         _ => Option::None
-    //     }
-    //     // Option::None
-    // }
-
-    // pub fn process(&mut self) -> Option<Tag<T>> {
-    //     Option::None
-    // }
 
     pub fn process<T: Taggable<T>>(self) -> Option<Tag<T>> {
         T::process(self)

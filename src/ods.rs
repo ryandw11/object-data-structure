@@ -2,7 +2,6 @@ use crate::internal::ODSInternal;
 use crate::tags::general::{Tag, Taggable, AnyTag};
 use std::path::PathBuf;
 use crate::internal::file::ODSFile;
-use std::fmt::Debug;
 
 pub struct ObjectDataStructure<T: ODSInternal> {
     internal: T

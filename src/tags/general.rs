@@ -1,12 +1,10 @@
-use crate::io::streams::{ReadStream, WriteStream};
-use std::any::{Any, TypeId};
+use crate::io::streams::{ReadStream, WriteStream, Stream, IOWrite, StandardIO, IORead};
+use std::any::Any;
 use std::fmt::Debug;
 use crate::internal::tag_builder::TagBuilder;
-use std::ops::Deref;
-use crate::internal::internal_utils::get_list_data;
+use crate::internal::internal_utils::{get_list_data, get_sub_object_data, get_sub_object_by_index, get_data_type_by_index};
 use crate::util::write_any_tag;
-use dyn_clone::DynClone;
-use downcast_rs::Downcast;
+use std::marker::PhantomData;
 
 pub type StringTag = Tag<String>;
 pub type IntTag = Tag<i32>;
@@ -16,7 +14,7 @@ pub type ShortTag = Tag<i16>;
 pub type LongTag = Tag<i64>;
 pub type CharTag = Tag<char>;
 pub type ByteTag = Tag<u8>;
-pub type VecTag = Tag<Vec<AnyTag>>;
+pub type VecTag = Tag<Container<VectorContainer>>;
 pub type AnyTag = Tag<Box<dyn Any>>;
 
 /*
@@ -28,8 +26,34 @@ pub type AnyTag = Tag<Box<dyn Any>>;
 pub trait Taggable<T> {
     fn as_tag(&self, name: String) -> Tag<T>;
     fn process(tag_builder: TagBuilder) -> Option<Tag<T>>;
-    fn write_data(tag: Tag<T>, write_stream: &mut WriteStream);
+    fn write_data(tag: Tag<T>, write_stream: &mut Stream);
     fn get_id() -> u8;
+}
+
+#[derive(Clone, Debug)]
+pub struct Container<T> {
+    data: Stream,
+    phantom: PhantomData<T>
+}
+
+impl<T> Container<T> {
+    pub fn new() -> Container<T> {
+        Container {
+            data: Stream::new_empty(),
+            phantom: PhantomData
+        }
+    }
+
+    pub fn new_with_data(data: Vec<u8>) -> Container<T> {
+        Container {
+            data: Stream::new_with_data(data),
+            phantom: PhantomData
+        }
+    }
+
+    pub fn get_data(&mut self) -> &mut Stream {
+        &mut self.data
+    }
 }
 
 // trait CloneableAny: Any + DynClone + Downcast {}
@@ -75,7 +99,7 @@ impl<T: Taggable<T>> Tag<T>{
     =============================
  */
 impl Tag<String> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> StringTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> StringTag {
         let string = read_stream.read_string(size as u64);
         self.value = string;
 
@@ -100,7 +124,7 @@ impl Taggable<String> for String {
         Option::None
     }
 
-    fn write_data(tag: Tag<String>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<String>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -122,7 +146,7 @@ impl Taggable<String> for String {
     =============================
  */
 impl Tag<i32> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> IntTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> IntTag {
         let int = read_stream.read_i32();
         self.value = int;
         self
@@ -146,7 +170,7 @@ impl Taggable<i32> for i32 {
         Option::None
     }
 
-    fn write_data(tag: Tag<i32>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<i32>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -168,7 +192,7 @@ impl Taggable<i32> for i32 {
     =============================
  */
 impl Tag<f32> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> FloatTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> FloatTag {
         let float = read_stream.read_f32();
         self.value = float;
         self
@@ -192,7 +216,7 @@ impl Taggable<f32> for f32 {
         Option::None
     }
 
-    fn write_data(tag: Tag<f32>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<f32>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -214,7 +238,7 @@ impl Taggable<f32> for f32 {
     =============================
  */
 impl Tag<f64> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> DoubleTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> DoubleTag {
         let double = read_stream.read_f64();
         self.value = double;
         self
@@ -238,7 +262,7 @@ impl Taggable<f64> for f64 {
         Option::None
     }
 
-    fn write_data(tag: Tag<f64>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<f64>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -260,7 +284,7 @@ impl Taggable<f64> for f64 {
     =============================
  */
 impl Tag<i16> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> ShortTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> ShortTag {
         let short = read_stream.read_i16();
         self.value = short;
         self
@@ -284,7 +308,7 @@ impl Taggable<i16> for i16 {
         Option::None
     }
 
-    fn write_data(tag: Tag<i16>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<i16>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -306,7 +330,7 @@ impl Taggable<i16> for i16 {
     =============================
  */
 impl Tag<i64> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> LongTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> LongTag {
         let long = read_stream.read_i64();
         self.value = long;
         self
@@ -330,7 +354,7 @@ impl Taggable<i64> for i64 {
         Option::None
     }
 
-    fn write_data(tag: Tag<i64>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<i64>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -352,7 +376,7 @@ impl Taggable<i64> for i64 {
     =============================
  */
 impl Tag<char> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> CharTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> CharTag {
         let character = read_stream.read_char();
         self.value = character;
         self
@@ -376,7 +400,7 @@ impl Taggable<char> for char {
         Option::None
     }
 
-    fn write_data(tag: Tag<char>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<char>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -398,7 +422,7 @@ impl Taggable<char> for char {
     =============================
  */
 impl Tag<u8> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> ByteTag {
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> ByteTag {
         let byte = read_stream.read();
         self.value = byte;
         self
@@ -422,7 +446,7 @@ impl Taggable<u8> for u8 {
         Option::None
     }
 
-    fn write_data(tag: Tag<u8>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<u8>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
@@ -443,12 +467,52 @@ impl Taggable<u8> for u8 {
              Vec Tag
     =============================
  */
-impl Tag<Vec<AnyTag>> {
-    pub fn create_from_data(mut self, mut read_stream: ReadStream, size: i32) -> VecTag {
-        let data = get_list_data(read_stream, size);
+#[derive(Clone, Debug)]
+pub struct VectorContainer;
+
+impl Tag<Container<VectorContainer>> {
+
+    pub fn from_vec(name: String, tags: &mut Vec<AnyTag>) -> VecTag {
+        let mut write_stream = Stream::new_empty();
+        for tag in tags.iter_mut() {
+            tag.set_name("".to_string());
+            write_any_tag(tag, &mut write_stream);
+        }
+
+        let container : Container<VectorContainer> = Container::new_with_data(write_stream.bytes());
+
+        VecTag {
+            name,
+            value: container,
+            id: 9
+        }
+    }
+
+    pub fn create_from_data(mut self, mut read_stream: Stream, size: i32) -> VecTag {
+        let mut vec = vec![0;size as usize];
+        read_stream.read_vec(&mut vec);
+        let data = Container::new_with_data(vec);
 
         self.value = data;
         self
+    }
+
+    pub fn get<T: Taggable<T>>(&mut self, index: i32) -> Option<Tag<T>>{
+        self.value.data.set_position(0);
+        get_sub_object_by_index::<T>(self.value.clone().data, index)
+    }
+
+    pub fn add<T: Taggable<T>>(&mut self, mut tag: Tag<T>) {
+        self.value.data.goto_end();
+        tag.set_name("".to_string());
+        T::write_data(tag, &mut self.value.data);
+    }
+
+    pub fn is_type<T: Taggable<T>>(&mut self, index: i32) -> bool {
+        self.value.data.set_position(0);
+        let id = get_data_type_by_index::<T>(self.value.clone().data, index);
+
+        T::get_id() == id as u8
     }
 
     // pub fn get<T: Taggable<T> + 'static>(&mut self, i: usize) -> &Tag<T> {
@@ -462,7 +526,7 @@ impl Tag<Vec<AnyTag>> {
     }
 }
 
-impl Taggable<Vec<AnyTag>> for Vec<AnyTag> {
+impl Taggable<Container<VectorContainer>> for Container<VectorContainer> {
     fn as_tag(&self, name: String) -> VecTag {
         // VecTag::new(name, self.clone())
         panic!("Cannot create a VecTag.");
@@ -471,20 +535,18 @@ impl Taggable<Vec<AnyTag>> for Vec<AnyTag> {
     fn process(tag_builder: TagBuilder) -> Option<VecTag> {
         let name = tag_builder.name;
         if tag_builder.data_type == 9 {
-            return Some(VecTag::new(name, Vec::new()).create_from_data(tag_builder.value_bytes.clone().unwrap(), tag_builder.value_length));
+            return Some(VecTag::new(name, Container::new()).create_from_data(tag_builder.value_bytes.clone().unwrap(), tag_builder.value_length));
         }
         Option::None
     }
 
-    fn write_data(tag: Tag<Vec<AnyTag>>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<Container<VectorContainer>>, write_stream: &mut Stream) {
         write_stream.write(tag.get_id());
         let mut temp_stream = WriteStream::new();
         temp_stream.write_i16(tag.name.len() as i16);
         temp_stream.write_string(tag.name.clone());
 
-        for t in tag.get_value().iter() {
-            write_any_tag(t, &mut temp_stream);
-        }
+        temp_stream.write_vec(tag.get_value().clone().get_data().bytes());
 
         write_stream.write_i32(temp_stream.size() as i32);
         write_stream.write_vec(temp_stream.bytes());
@@ -562,13 +624,13 @@ impl Taggable<Box<dyn Any>> for Box<dyn Any> {
             return Some(AnyTag::from_tag::<u8>(u8::process(tag_builder.clone()).unwrap()));
         }
         else if tag_builder.data_type == 9 {
-            type t = Vec<AnyTag>;
-            return Some(AnyTag::from_tag::<Vec<AnyTag>>(t::process(tag_builder.clone()).unwrap()));
+            type T = Container<VectorContainer>;
+            return Some(AnyTag::from_tag::<Container<VectorContainer>>(T::process(tag_builder.clone()).unwrap()));
         }
         Option::None
     }
 
-    fn write_data(tag: Tag<Box<dyn Any>>, write_stream: &mut WriteStream) {
+    fn write_data(tag: Tag<Box<dyn Any>>, write_stream: &mut Stream) {
         write_any_tag(&tag, write_stream)
     }
 

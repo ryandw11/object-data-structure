@@ -9,14 +9,10 @@ pub mod util;
 pub mod internal;
 
 extern crate byteorder;
-#[macro_use]
-extern crate dyn_clone;
-#[macro_use]
-extern crate downcast_rs;
 
 #[cfg(test)]
 mod tests {
-    use crate::tags::general::{StringTag, DoubleTag, VecTag, AnyTag};
+    use crate::tags::general::{StringTag, DoubleTag, VecTag, AnyTag, Container, VectorContainer, FloatTag, ShortTag};
     use crate::io::streams::WriteStream;
     use std::fs;
     use std::path::PathBuf;
@@ -76,15 +72,21 @@ mod tests {
         // let tags = ods.get_all().unwrap();
         // println!("{:?}", tags[0].downcast_any_tag::<VecTag>().get_value());
 
-        let test = ods.get::<Vec<AnyTag>>("My_Double".to_string());
-        // println!("{:?}", test.unwrap().get::<String>(0));
+        let mut test = ods.get::<Container<VectorContainer>>("My_Double".to_string()).unwrap();
+        println!("Is Value: {:?}", test.get::<String>(1).unwrap().get_value());
 
-        // let example_tag = VecTag::new("My_Double".to_string(), vec_tag!(
+
+        println!("{:?}", test.is_type::<f64>(3));
+
+        // let mut example_tag = VecTag::from_vec("My_Double".to_string(), &mut vec_tag!(
         //     StringTag::new("My_Cool_Tag".to_string(), "My Next Value!".to_string()),
         //     StringTag::new("3".to_string(), " greig erjiog eorjg oe!".to_string()),
         //     StringTag::new("f".to_string(), " few fw efwe!".to_string()),
         //     DoubleTag::new("db".to_string(), 20.5436)
         // ));
+        //
+        // example_tag.add(ShortTag::new("Test".to_string(), 20));
+        //
         // ods.append(example_tag);
 
         println!("{}", ods.find("Test_Tag".to_string()));

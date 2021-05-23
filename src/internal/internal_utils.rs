@@ -2,10 +2,23 @@ use std::any::Any;
 
 use crate::internal::keyscout::{KeyScout, KeyScoutChild};
 use crate::internal::tag_builder::TagBuilder;
-use crate::io::streams::ReadStream;
+use crate::io::streams::{ReadStream, StandardIO, IORead, Stream};
 use crate::tags::general::{AnyTag, StringTag, Tag, Taggable};
 
-pub fn get_sub_object_data<T: Taggable<T>>(mut read_stream: ReadStream, key: String) -> Option<Tag<T>> {
+/// Get Sub Object data from a Stream using a key.
+///
+/// # Params
+/// mut read_stream: `Stream` -> The Stream to read from. (Ensure the position is where you want it to be).
+/// key: String -> The key of the object to get.
+///
+/// # Type Params
+/// T: `Taggable<T>` ->  The data stored by a Tag that you want to get. Ex: If you want to get a
+/// StringTag, then you put String as the type parameter.
+///
+/// # Returns
+/// `Option<Tag<T>>` -> The obtained Tag. This is None if the key is not found or if the tag
+/// is not of type described in the type parameter.
+pub fn get_sub_object_data<T: Taggable<T>>(mut read_stream: Stream, key: String) -> Option<Tag<T>> {
     let name_list: Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();
     let other_key = get_key(key.as_str().split('.').collect());
@@ -61,7 +74,60 @@ fn get_key(s: Vec<&str>) -> Option<String> {
     Some(list.join("."))
 }
 
-pub fn get_list_data(mut read_stream: ReadStream, limit: i32) -> Vec<AnyTag> {
+pub fn get_sub_object_by_index<T: Taggable<T>>(mut read_stream: Stream, index: i32) -> Option<Tag<T>> {
+    let mut current_builder = TagBuilder::new();
+    let mut i = -1;
+    while read_stream.can_read_more() {
+        i += 1;
+        current_builder.set_data_type(read_stream.read() as i32);
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+
+        if i != index {
+            read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+            current_builder = TagBuilder::new();
+            continue;
+        }
+
+        let tag_name = read_stream.read_string(current_builder.get_name_size() as u64);
+        current_builder.set_name(tag_name.clone());
+
+        let starting_index = current_builder.get_starting_index();
+        let data_size = current_builder.get_data_size();
+
+        current_builder.set_value_length(((starting_index - read_stream.position() as i64) + data_size as i64) as i32);
+        current_builder.set_value_bytes(read_stream);
+
+        return current_builder.process::<T>();
+    }
+
+    Option::None
+}
+
+pub fn get_data_type_by_index<T: Taggable<T>>(mut read_stream: Stream, index: i32) -> i32 {
+    let mut current_builder = TagBuilder::new();
+    let mut i = -1;
+    while read_stream.can_read_more() {
+        i += 1;
+        current_builder.set_data_type(read_stream.read() as i32);
+        current_builder.set_data_size(read_stream.read_i32());
+        current_builder.set_starting_index(read_stream.position() as i64);
+        current_builder.set_name_size(read_stream.read_i16() as i32);
+
+        if i != index {
+            read_stream.set_position((current_builder.get_starting_index() as i64 + current_builder.get_data_size() as i64) as u64);
+            current_builder = TagBuilder::new();
+            continue;
+        }
+
+        return current_builder.get_data_type();
+    }
+
+    0
+}
+
+pub fn get_list_data(mut read_stream: Stream, limit: i32) -> Vec<AnyTag> {
     let mut output: Vec<AnyTag> = Vec::new();
 
 
@@ -84,7 +150,7 @@ pub fn get_list_data(mut read_stream: ReadStream, limit: i32) -> Vec<AnyTag> {
     output
 }
 
-pub fn find_sub_object_data(mut read_stream: ReadStream, key: String) -> bool {
+pub fn find_sub_object_data(mut read_stream: Stream, key: String) -> bool {
     let name_list: Vec<&str> = key.as_str().split('.').collect();
     let name = name_list[0].to_string();
     let other_key = get_key(key.as_str().split('.').collect());

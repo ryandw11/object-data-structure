@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::internal::internal_utils::{delete_sub_object_data, find_sub_object_data, get_list_data, get_sub_object_data, replace_sub_object_data, scout_object_data};
 use crate::internal::keyscout::KeyScout;
 use crate::internal::ODSInternal;
-use crate::io::streams::{ReadStream, WriteStream};
+use crate::io::streams::{ReadStream, WriteStream, IOWrite, StandardIO, Stream};
 use crate::tags::general::{AnyTag, Tag, Taggable};
 
 pub struct ODSFile {
@@ -17,7 +17,7 @@ impl ODSInternal for ODSFile {
         if !self.file.exists() {
             return Option::None;
         }
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
 
         get_sub_object_data::<T>(read_stream, key)
     }
@@ -27,7 +27,7 @@ impl ODSInternal for ODSFile {
             return Option::None;
         }
 
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
 
         Some(get_list_data(read_stream.clone(), read_stream.size() as i32))
     }
@@ -40,7 +40,7 @@ impl ODSInternal for ODSFile {
 
         let mut data: Vec<u8> = Vec::new();
         file.read_to_end(&mut data);
-        let mut stream = WriteStream::new_with_data(data);
+        let mut stream = Stream::new_with_data(data);
         T::write_data(tag, &mut stream);
         stream.export_to_file(self.file.clone());
     }
@@ -49,7 +49,7 @@ impl ODSInternal for ODSFile {
         if !self.file.exists() {
             return false;
         }
-        let mut read_stream = ReadStream::new(&self.file);
+        let mut read_stream = Stream::new_from_file(&self.file);
 
         find_sub_object_data(read_stream, key)
     }
@@ -86,7 +86,7 @@ impl ODSInternal for ODSFile {
             return false;
         }
 
-        let mut write_tag = WriteStream::new();
+        let mut write_tag = Stream::new_empty();
         T::write_data(replacement, &mut write_tag);
 
         let mut data = read_stream.bytes();
@@ -126,9 +126,9 @@ impl ODSInternal for ODSFile {
                 self.append(value.unwrap());
                 return;
             }
-            let mut existingKey = String::new();
+            let mut existing_key = String::new();
             for child in counter.get_children().iter() {
-                if existingKey.len() != 0 {
+                if existing_key.len() != 0 {
 
                 }
             }
